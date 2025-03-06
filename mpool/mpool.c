@@ -364,6 +364,19 @@ mpool_write(mp, bp)
 		(mp->pgout)(mp->pgcookie, bp->pgno, bp->page);
 
 	off = mp->pagesize * bp->pgno;
+	if (mp->fvtable->lseek(mp->fd, off, SEEK_SET) != off) {
+		int ret;
+		ret = mp->fvtable->lseek(mp->fd, 0, SEEK_END);
+		if (ret <0)
+			return (RET_ERROR);
+		if ((off-ret)>0) {
+			ret = (off-ret+3)>>2;
+			for (uint32_t fill=0;ret;ret--)
+				if (mp->fvtable->write(mp->fd, &fill, sizeof(fill)) != sizeof(fill))
+					return (RET_ERROR);
+		}
+	}
+
 	if (mp->fvtable->lseek(mp->fd, off, SEEK_SET) != off)
 		return (RET_ERROR);
 	if (mp->fvtable->write(mp->fd, bp->page, mp->pagesize) != mp->pagesize)
